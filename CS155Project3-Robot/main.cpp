@@ -36,6 +36,7 @@ int windowHeight=800;
 double phi = 0;
 double theta = 0;
 double zoom = 0;
+double camdy = 0;
 
 // current mouse position
 GLboolean firstMouse = true;
@@ -94,8 +95,6 @@ int main(int argc, char **argv)
     glutKeyboardFunc(keyboard);
     glutKeyboardUpFunc(keyboardup);
     
-//    menu_window = glutCreateSubWindow(main_window, 100, 100, 600, 600);
-//    glutDisplayFunc(menu_display);
     
     // initalize opengl parameters
     init();
@@ -111,7 +110,7 @@ void init()
     // initialize viewing system
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluPerspective(26.0, 1.0, 1.0, 100.0);
+    gluPerspective(24.0, 1.0, 1.0, 100.0);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     
@@ -119,20 +118,27 @@ void init()
     glClearColor(0,0,0,0);
     
     // position of light0
-    GLfloat lightPosition[]={10,10,10,0};
+    GLfloat lightPosition[]={10,10,10,1};
     glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
-    
     // set color of light0
     GLfloat white[] = {1,1,1,0};		      // light color
     glLightfv(GL_LIGHT0, GL_DIFFUSE, white);   // set diffuse light color
     glLightfv(GL_LIGHT0, GL_SPECULAR, white);  // set specular light color
     
-    // enable light0 and lighting
+    // position of light1
+    GLfloat lightPosition1[]={-10,10,-10,0};
+    glLightfv(GL_LIGHT1, GL_POSITION, lightPosition1);
+    // set color of light1
+    glLightfv(GL_LIGHT1, GL_DIFFUSE, white);   // set diffuse light color
+    glLightfv(GL_LIGHT1, GL_SPECULAR, white);  // set specular light color
+    
+    // enable light
     glEnable(GL_LIGHT0);
+    glEnable(GL_LIGHT1);
     glEnable(GL_LIGHTING);
     
     // init ambient lightening
-    GLfloat ambientColor[] = {1, 1, 1, 0};
+    GLfloat ambientColor[] = {0.2, 0.2, 0.2, 1};
     glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambientColor);
     // enable ambient lighting
     glEnable(GL_LIGHT_MODEL_AMBIENT);
@@ -199,15 +205,30 @@ void keyboard(unsigned char key, int x, int y) {
             glLoadIdentity();
             glutPostRedisplay();
             break;
-        // see control options
-        case 'c':
-            cout << "c" << endl;
-            glMatrixMode(GL_PROJECTION);
-            glLoadIdentity();
-            glutHideWindow();
-            glMatrixMode(GL_MODELVIEW);
-            glLoadIdentity();
+        // move the camera upward
+        case 'z':
+            camdy += sensitivity*3;
             glutPostRedisplay();
+            break;
+        // move the camera downward
+        case 'x':
+            camdy -= sensitivity*3;
+            glutPostRedisplay();
+            break;
+        // see control options
+        case 'm':
+            cout << "" << endl;
+            cout << "" << endl;
+            cout << "         ~ Controls ~" << endl;
+            cout << "================================" << endl;
+            cout << "control menu  -------   'm'" << endl;
+            cout << "zoom in       -------   'q'" << endl;
+            cout << "zoom out      -------   'e'" << endl;
+            cout << "zoom reset    -------   'r'" << endl;
+            cout << "camera up     -------   'z'" << endl;
+            cout << "camera down   -------   'x'" << endl;
+            cout << "" << endl;
+            cout << "" << endl;
             break;
             
         default:
@@ -223,6 +244,10 @@ void keyboardup(unsigned char key, int x, int y) {
             break;
         case 'e':
             e_pressed = 0;
+            break;
+        case 'z':
+            break;
+        case 'x':
             break;
             
         default:
@@ -252,11 +277,15 @@ void menu_func(int value)
     {
         case M_OPTIONS_AMB_LIGHT: {
             if (amb_light == 1) {
-                glDisable(GL_LIGHT_MODEL_AMBIENT);
+//                glDisable(GL_LIGHT_MODEL_AMBIENT);
+                GLfloat ambientColor[] = {0.0, 0.0, 0.0, 1};
+                glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambientColor);
                 amb_light = 0;
                 cout << "Ambient light off." << endl;
             } else {
-                glEnable(GL_LIGHT_MODEL_AMBIENT);
+//                glEnable(GL_LIGHT_MODEL_AMBIENT);
+                GLfloat ambientColor[] = {0.2, 0.2, 0.2, 1};
+                glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambientColor);
                 amb_light = 1;
                 cout << "Ambient light on." << endl;
             }
@@ -264,11 +293,13 @@ void menu_func(int value)
             break;
         case M_OPTIONS_P_LIGHT: {
             if (p_light == 1) {
-                glDisable(GL_LIGHTING);
+                glDisable(GL_LIGHT0);
+                glDisable(GL_LIGHT1);
                 p_light = 0;
                 cout << "Point light off." << endl;
             } else {
-                glEnable(GL_LIGHTING);
+                glEnable(GL_LIGHT0);
+                glEnable(GL_LIGHT1);
                 p_light = 1;
                 cout << "Point light on." << endl;
             }
@@ -323,15 +354,14 @@ void display()
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     
     // set viewpoint position/orientation
-    gluLookAt(25*sin(phi*3.14/180.0),0,25*cos(phi*3.14/180.0),
-              0,25*sin(theta*3.14/180.0),0,
+    gluLookAt(25*sin(phi*3.14/180.0),10+camdy,25*cos(phi*3.14/180.0),
+              0,25*sin(theta*3.14/180.0)+camdy,0,
               0,1,0);
     
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //                                menu
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     make_menu();
-    
     
     
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -342,23 +372,7 @@ void display()
     //                 setting light
     // =============================================
     
-    //Add ambient light
-//    GLfloat ambientColor[] = {1, 1, 1, 0};
-//    glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambientColor);
-    
-    // position of light0
-//    GLfloat lightPosition[]={20,20,20,0};
-//    glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
-    
-    // set color of light0
-//    GLfloat white[] = {1,1,1,0};	        // white
-//    glLightfv(GL_LIGHT0, GL_DIFFUSE, white);   // set diffuse light color
-//    glLightfv(GL_LIGHT0, GL_SPECULAR, white);  // set specular light color
-    
-    // enable light0 and lighting
-//    glEnable(GL_LIGHT0);
-//    glEnable(GL_LIGHTING);
-//    glEnable(GL_LIGHT_MODEL_AMBIENT);
+    GLfloat white[] = {1,1,1,0};
     
     // =============================================
     //             draw a red triangle
@@ -379,15 +393,35 @@ void display()
     //              draw Triangle strip
     // =============================================
     GLfloat green[] = {0,1,0,0};			// green
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, green);
+    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, green);
     glMaterialfv(GL_FRONT, GL_SPECULAR, green);
-    glMateriali(GL_FRONT,GL_SHININESS,0);
+    glMateriali(GL_FRONT,GL_SHININESS,10);
     
-    glBegin(GL_TRIANGLE_STRIP);
-    glVertex3f(-1000000.0,-1.0,-1000000.0);
-    glVertex3f(-1000000.0,-1.0,1000000.0);
-    glVertex3f(1000000.0,-1.0,-1000000.0);
-    glVertex3f(1000000.0,-1.0,1000000.0);
+    double square_size = 1000;
+    double drawx = -1*square_size/2;
+    double drawy = -1;
+    double drawz = -1*square_size/2;
+    double originx = drawx;
+    double originy = drawy;
+    double originz = drawz;
+    
+    glBegin(GL_QUAD_STRIP);
+    for (double j = 0; j < square_size; j++) {
+        for (double i = 0; i < square_size; i++) {
+            glVertex3f(drawx,drawy,drawz);
+            drawz = drawz+1;
+            glVertex3f(drawx,drawy,drawz);
+            drawx = drawx+1;
+            drawz = drawz-1;
+            glVertex3f(drawx,drawy,drawz);
+            drawz = drawz+1;
+            glVertex3f(drawx,drawy,drawz);
+            drawz--;
+        }
+        drawx = originx;
+        drawz = originz+j+1;
+    }
+    
     glEnd();
     glNormal3f(0,1,0);
     
@@ -395,11 +429,32 @@ void display()
     //                  draw Sphere
     // =============================================
     GLfloat purple[] = {1,0,1,0};			// purple
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, purple);
+    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, purple);
     glMaterialfv(GL_FRONT, GL_SPECULAR, purple);
-    glMateriali(GL_FRONT,GL_SHININESS,50);
+    glMateriali(GL_FRONT,GL_SHININESS,80);
     glutSolidSphere(.75,100,100);
     glNormal3f(0,0,1);
+    
+    glMatrixMode(GL_MODELVIEW_MATRIX);
+    glTranslatef(0, 0, -3);
+    
+    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, white);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, white);
+    glMateriali(GL_FRONT,GL_SHININESS,50);
+    glutSolidSphere(.74,200,100);
+    glNormal3f(0,0,1);
+    
+    glMatrixMode(GL_MODELVIEW_MATRIX);
+    glTranslatef(0, 2, 2);
+    glRotatef(25, 6, 5, 4);
+    
+    GLUquadricObj *quadratic;
+    quadratic = gluNewQuadric();
+    GLfloat rcolor[] = {0.5,0.4,0.3};
+    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, rcolor);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, rcolor);
+    glMateriali(GL_FRONT,GL_SHININESS,50);
+    gluCylinder(quadratic, 0.1f, 0.1f, 10, 32, 32);
     
     // swap buffers
     glutSwapBuffers();
