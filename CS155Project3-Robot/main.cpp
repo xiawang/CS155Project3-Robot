@@ -5,6 +5,8 @@
 //  Created by 王小天 on 16/3/4.
 //  Copyright (c) 2016年 Xiaotian Wang. All rights reserved.
 //
+//  Author: Xiaotian Wang / Amanda Yin
+//
 
 #include <iostream>
 #include <glut/glut.h>
@@ -58,6 +60,7 @@ enum MENU_TYPE
 {
     M_OPTIONS_AMB_LIGHT,
     M_OPTIONS_P_LIGHT,
+    M_HELP_CONTROL,
 };
 
 double amb_light = 1;
@@ -147,8 +150,6 @@ void init()
     glEnable(GL_DEPTH_TEST);
 }
 
-
-
 void reshape(int width, int height)
 {
     if (width<height)
@@ -157,6 +158,11 @@ void reshape(int width, int height)
         glViewport(0,0,height,height);
     
 }
+
+
+// ----------------------------------------------------------------------------------------------
+//                                         Controlling
+// ----------------------------------------------------------------------------------------------
 
 void mouse(int button, int state, int x, int y)
 {
@@ -170,6 +176,26 @@ void mouse(int button, int state, int x, int y)
     }
 }
 
+void keyboardup(unsigned char key, int x, int y) {
+    cout << "key " << key << " released." << endl;
+    switch (key) {
+        case 'q':
+            q_pressed = 0;
+            break;
+        case 'e':
+            e_pressed = 0;
+            break;
+        case 'z':
+            break;
+        case 'x':
+            break;
+            
+        default:
+            break;
+    }
+}
+
+
 void keyboard(unsigned char key, int x, int y) {
     cout << "key " << key << " pressed." << endl;
     switch (key) {
@@ -177,6 +203,9 @@ void keyboard(unsigned char key, int x, int y) {
         case 'q':
             q_pressed = 1;
             zoom += 1;
+            if (zoom >= 60) {
+                zoom = 60;
+            }
             glMatrixMode(GL_PROJECTION);
             glLoadIdentity();
             gluPerspective(20.0-zoom*0.3, 1.0, 1.0, 100.0);
@@ -188,6 +217,9 @@ void keyboard(unsigned char key, int x, int y) {
         case 'e':
             e_pressed = 1;
             zoom -= 1;
+            if (zoom <= -60) {
+                zoom = -60;
+            }
             glMatrixMode(GL_PROJECTION);
             glLoadIdentity();
             gluPerspective(20.0-zoom*0.3, 1.0, 1.0, 100.0);
@@ -236,26 +268,6 @@ void keyboard(unsigned char key, int x, int y) {
     }
 }
 
-void keyboardup(unsigned char key, int x, int y) {
-    cout << "key " << key << " released." << endl;
-    switch (key) {
-        case 'q':
-            q_pressed = 0;
-            break;
-        case 'e':
-            e_pressed = 0;
-            break;
-        case 'z':
-            break;
-        case 'x':
-            break;
-            
-        default:
-            break;
-    }
-}
-
-
 void motion(int x, int y)
 {
     offsetx = x - lastx;
@@ -271,19 +283,22 @@ void motion(int x, int y)
     glutPostRedisplay();
 }
 
+
+// ----------------------------------------------------------------------------------------------
+//                                             Menu
+// ----------------------------------------------------------------------------------------------
+
 void menu_func(int value)
 {
     switch (value)
     {
         case M_OPTIONS_AMB_LIGHT: {
             if (amb_light == 1) {
-//                glDisable(GL_LIGHT_MODEL_AMBIENT);
                 GLfloat ambientColor[] = {0.0, 0.0, 0.0, 1};
                 glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambientColor);
                 amb_light = 0;
                 cout << "Ambient light off." << endl;
             } else {
-//                glEnable(GL_LIGHT_MODEL_AMBIENT);
                 GLfloat ambientColor[] = {0.2, 0.2, 0.2, 1};
                 glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambientColor);
                 amb_light = 1;
@@ -305,6 +320,21 @@ void menu_func(int value)
             }
         }
             break;
+        case M_HELP_CONTROL: {
+            cout << "" << endl;
+            cout << "" << endl;
+            cout << "         ~ Controls ~" << endl;
+            cout << "================================" << endl;
+            cout << "control menu  -------   'm'" << endl;
+            cout << "zoom in       -------   'q'" << endl;
+            cout << "zoom out      -------   'e'" << endl;
+            cout << "zoom reset    -------   'r'" << endl;
+            cout << "camera up     -------   'z'" << endl;
+            cout << "camera down   -------   'x'" << endl;
+            cout << "" << endl;
+            cout << "" << endl;
+        }
+            break;
         default:
             break;
     }
@@ -314,15 +344,18 @@ void menu_func(int value)
     return;
 }
 
-
 int make_menu ()
 {
     int options = glutCreateMenu(menu_func);
     glutAddMenuEntry("Toggle Ambient Light", M_OPTIONS_AMB_LIGHT);
     glutAddMenuEntry("Toggle Point Light", M_OPTIONS_P_LIGHT);
     
+    int help = glutCreateMenu(menu_func);
+    glutAddMenuEntry("Control", M_HELP_CONTROL);
+    
     int main = glutCreateMenu(menu_func);
     glutAddSubMenu("Manage Light", options);
+    glutAddSubMenu("Help", help);
     
     glutAttachMenu(GLUT_RIGHT_BUTTON);
     
@@ -339,6 +372,10 @@ void menu_display()
     glLoadIdentity();
 }
 
+
+// ----------------------------------------------------------------------------------------------
+//                                            Display
+// ----------------------------------------------------------------------------------------------
 
 void display()
 {
