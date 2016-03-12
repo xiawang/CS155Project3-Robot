@@ -60,11 +60,13 @@ enum MENU_TYPE
 {
     M_OPTIONS_AMB_LIGHT,
     M_OPTIONS_P_LIGHT,
+    M_OPTIONS_D_LIGHT,
     M_HELP_CONTROL,
 };
 
 double amb_light = 1;
 double p_light = 1;
+double d_light = 1;
 
 int main_window;
 int menu_window;
@@ -107,6 +109,52 @@ int main(int argc, char **argv)
     return 0;
 }
 
+void initLighting()
+{
+    // Set lighting intensity and color
+    GLfloat qaAmbientLight1[]    = {0.88, 0.88, 0.88, 1.0};
+    GLfloat qaDiffuseLight1[]    = {1, 1, 1, 1.0};
+    GLfloat qaAmbientLight2[]    = {0.66, 0.66, 0.66, 1.0};
+    GLfloat qaDiffuseLight2[]    = {1, 1, 1, 1.0};
+    
+    // Light source position
+    GLfloat qaLightPosition1[]    = {-2, 5, -18, 1};
+    GLfloat qaLightPosition2[]    = {1, -0.9, -7, 1};
+    
+    // Enable lighting
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0);
+    glEnable(GL_LIGHT1);
+    
+    
+    // Set lighting intensity and color
+    glLightfv(GL_LIGHT0, GL_AMBIENT, qaAmbientLight1);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, qaDiffuseLight1);
+    glLightfv(GL_LIGHT0, GL_POSITION, qaLightPosition1);
+    ////////////////////////////////////////////////
+//    glLightf( GL_LIGHT0, GL_CONSTANT_ATTENUATION, 0.2f );
+    glLightf( GL_LIGHT0, GL_LINEAR_ATTENUATION , 0.5f );
+//    glLightf( GL_LIGHT0, GL_QUADRATIC_ATTENUATION , 0.009f );
+    
+    // Set lighting intensity and color
+    glLightfv(GL_LIGHT1, GL_AMBIENT, qaAmbientLight2);
+    glLightfv(GL_LIGHT1, GL_DIFFUSE, qaDiffuseLight2);
+    glLightfv(GL_LIGHT1, GL_POSITION, qaLightPosition2);
+    ////////////////////////////////////////////////
+//    glLightf( GL_LIGHT1, GL_CONSTANT_ATTENUATION, 5.0 );
+    glLightf( GL_LIGHT1, GL_LINEAR_ATTENUATION , 0.12f );
+//    glLightf( GL_LIGHT1, GL_QUADRATIC_ATTENUATION , 1.3 );
+    
+    // smooth shading
+    glShadeModel(GL_SMOOTH);
+    
+    // init ambient lightening
+    GLfloat ambientColor[] = {0.4, 0.4, 0.4, 1};
+    glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambientColor);
+    
+    
+}
+
 
 void init()
 {
@@ -120,33 +168,8 @@ void init()
     // initialize background color to black
     glClearColor(0,0,0,0);
     
-    // position of light0
-    GLfloat lightPosition[]={10,10,10,1};
-    glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
-    // set color of light0
-    GLfloat white[] = {1,1,1,0};		      // light color
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, white);   // set diffuse light color
-    glLightfv(GL_LIGHT0, GL_SPECULAR, white);  // set specular light color
+    initLighting();
     
-    // position of light1
-    GLfloat lightPosition1[]={-10,10,-10,0};
-    glLightfv(GL_LIGHT1, GL_POSITION, lightPosition1);
-    // set color of light1
-    glLightfv(GL_LIGHT1, GL_DIFFUSE, white);   // set diffuse light color
-    glLightfv(GL_LIGHT1, GL_SPECULAR, white);  // set specular light color
-    
-    // enable light
-    glEnable(GL_LIGHT0);
-    glEnable(GL_LIGHT1);
-    glEnable(GL_LIGHTING);
-    
-    // init ambient lightening
-    GLfloat ambientColor[] = {0.2, 0.2, 0.2, 1};
-    glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambientColor);
-    // enable ambient lighting
-    glEnable(GL_LIGHT_MODEL_AMBIENT);
-    
-    // enable depth buffering
     glEnable(GL_DEPTH_TEST);
 }
 
@@ -309,14 +332,24 @@ void menu_func(int value)
         case M_OPTIONS_P_LIGHT: {
             if (p_light == 1) {
                 glDisable(GL_LIGHT0);
-                glDisable(GL_LIGHT1);
                 p_light = 0;
                 cout << "Point light off." << endl;
             } else {
                 glEnable(GL_LIGHT0);
-                glEnable(GL_LIGHT1);
                 p_light = 1;
                 cout << "Point light on." << endl;
+            }
+        }
+            break;
+        case M_OPTIONS_D_LIGHT: {
+            if (d_light == 1) {
+                glDisable(GL_LIGHT1);
+                d_light = 0;
+                cout << "Directional light off." << endl;
+            } else {
+                glEnable(GL_LIGHT1);
+                d_light = 1;
+                cout << "Directional light on." << endl;
             }
         }
             break;
@@ -349,6 +382,7 @@ int make_menu ()
     int options = glutCreateMenu(menu_func);
     glutAddMenuEntry("Toggle Ambient Light", M_OPTIONS_AMB_LIGHT);
     glutAddMenuEntry("Toggle Point Light", M_OPTIONS_P_LIGHT);
+    glutAddMenuEntry("Toggle Directional Light", M_OPTIONS_D_LIGHT);
     
     int help = glutCreateMenu(menu_func);
     glutAddMenuEntry("Control", M_HELP_CONTROL);
@@ -379,11 +413,20 @@ void menu_display()
 
 void display()
 {
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //                           error reports
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    cout << gluErrorString(glGetError()) << endl;
+    
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //                           init display
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    
     // clear buffers
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     
     // initialize modelview matrix
-    glMatrixMode(GL_MODELVIEW_MATRIX);
+    glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -415,82 +458,75 @@ void display()
     //             draw a red triangle
     // =============================================
     GLfloat red[] = {1,0,0,0};              // red
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, red);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, red);
-    glMateriali(GL_FRONT,GL_SHININESS,0);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, red);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, red);
+    glMateriali(GL_FRONT_AND_BACK,GL_SHININESS,40);
     
-    glBegin(GL_TRIANGLES);
-    glVertex3f(-3,-1,-8);
-    glVertex3f(3,-1,-10);
-    glVertex3f(0,3,-9);
-    glEnd();
     glNormal3f(1,0,0);
+    glBegin(GL_TRIANGLES);
+    glVertex3f(0,-1,-8);
+    glVertex3f(3,-1,-10);
+    glVertex3f(0,5,-9);
+    glEnd();
     
     // =============================================
     //              draw Triangle strip
     // =============================================
     GLfloat green[] = {0,1,0,0};			// green
-    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, green);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, green);
-    glMateriali(GL_FRONT,GL_SHININESS,10);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, green);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, green);
+    glMateriali(GL_FRONT_AND_BACK,GL_SHININESS,10);
     
-    double square_size = 1000;
-    double drawx = -1*square_size/2;
+    double tile_size = 5;
+    double square_size = 10;
+    double drawx = -tile_size*square_size/2;
     double drawy = -1;
-    double drawz = -1*square_size/2;
-    double originx = drawx;
-    double originy = drawy;
-    double originz = drawz;
+    double drawz = -tile_size*square_size/2;
     
-    glBegin(GL_QUAD_STRIP);
-    for (double j = 0; j < square_size; j++) {
-        for (double i = 0; i < square_size; i++) {
-            glVertex3f(drawx,drawy,drawz);
-            drawz = drawz+1;
-            glVertex3f(drawx,drawy,drawz);
-            drawx = drawx+1;
-            drawz = drawz-1;
-            glVertex3f(drawx,drawy,drawz);
-            drawz = drawz+1;
-            glVertex3f(drawx,drawy,drawz);
-            drawz--;
+    glNormal3f(0,1,0);
+    
+    glBegin(GL_QUADS);
+    for (double i = 0; i < square_size; i++) {
+        for (double j = 0; j < square_size; j++) {
+            glVertex3f(drawx + i*tile_size,drawy,drawz +j*tile_size);
+            glVertex3f(drawx + i*tile_size,drawy,drawz +(j+1)*tile_size);
+            glVertex3f(drawx + (i+1)*tile_size,drawy,drawz+(j+1)*tile_size);
+            glVertex3f(drawx + (i+1)*tile_size,drawy,drawz+j*tile_size);
         }
-        drawx = originx;
-        drawz = originz+j+1;
     }
     
     glEnd();
-    glNormal3f(0,1,0);
     
     // =============================================
     //                  draw Sphere
     // =============================================
     GLfloat purple[] = {1,0,1,0};			// purple
-    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, purple);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, purple);
-    glMateriali(GL_FRONT,GL_SHININESS,80);
-    glutSolidSphere(.75,100,100);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, purple);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, purple);
+    glMateriali(GL_FRONT_AND_BACK,GL_SHININESS,80);
     glNormal3f(0,0,1);
+    glutSolidSphere(.75,100,100);
     
-    glMatrixMode(GL_MODELVIEW_MATRIX);
+    glMatrixMode(GL_MODELVIEW);
     glTranslatef(0, 0, -3);
     
-    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, white);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, white);
-    glMateriali(GL_FRONT,GL_SHININESS,50);
-    glutSolidSphere(.74,200,100);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, white);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, white);
+    glMateriali(GL_FRONT_AND_BACK,GL_SHININESS,50);
     glNormal3f(0,0,1);
-    
-    glMatrixMode(GL_MODELVIEW_MATRIX);
+    glutSolidSphere(.74,200,100);
+
+    glMatrixMode(GL_MODELVIEW);
     glTranslatef(0, 2, 2);
     glRotatef(25, 6, 5, 4);
     
     GLUquadricObj *quadratic;
     quadratic = gluNewQuadric();
     GLfloat rcolor[] = {0.5,0.4,0.3};
-    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, rcolor);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, rcolor);
-    glMateriali(GL_FRONT,GL_SHININESS,50);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, rcolor);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, rcolor);
+    glMateriali(GL_FRONT_AND_BACK,GL_SHININESS,50);
+    glNormal3f(0,0,1);
     gluCylinder(quadratic, 0.1f, 0.1f, 10, 32, 32);
     
     // swap buffers
