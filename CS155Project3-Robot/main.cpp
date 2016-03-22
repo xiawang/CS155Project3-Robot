@@ -137,6 +137,13 @@ double h_pressed = 0;
 double first_person = 0;
 double view_changed = 0;
 
+// roller coaster
+int numPts = 16;
+double x1_pt[] = {4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4};
+double x2_pt[] = {6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6};
+double y_pt[] = {0,1,4,6,5,9.10,11,7,8,5,3,4,6,7,5};
+double z_pt[] = {-1,-4,-8,-12,-18,-20,-22,-34,-40,-46,-55,-60,-68,-70,-89,-94};
+
 
 // -------------------------------------------------------------------
 //                                  menu
@@ -439,6 +446,7 @@ void keyboard(unsigned char key, int x, int y) {
             cout << "right         -------   'd'" << endl;
             cout << "move head     -------   'h' (and move the mouse)" << endl;
             cout << "first person  -------   'f'" << endl;
+            cout << "pick/leave    -------   'p'" << endl;
             cout << "" << endl;
             cout << "" << endl;
             break;
@@ -551,7 +559,9 @@ void menu_func(int value)
             cout << "backward      -------   's'" << endl;
             cout << "left          -------   'a'" << endl;
             cout << "right         -------   'd'" << endl;
-            cout << "move head     -------   'h' (and move the mouse)" << endl;
+            cout << "move head     -------   'h' (press and move the mouse)" << endl;
+            cout << "first person  -------   'f'" << endl;
+            cout << "pick/leave    -------   'p'" << endl;
             cout << "" << endl;
             cout << "" << endl;
         }
@@ -1051,9 +1061,10 @@ void display()
         // view direction
         if (h_pressed == 0) {
             gluLookAt(25*sin(phi*3.14/180.0)-robot_a+robot_d,6+camdy,-25+25*cos(phi*3.14/180.0)-robot_w+robot_s,
-                      -robot_a+robot_d,25*sin((theta)*3.14/180.0)+camdy,-26-robot_w+robot_s,
+                      5*sin(phi*3.14/180.0)-robot_a+robot_d,5*sin((theta)*3.14/180.0)+camdy,-26+5*cos(phi*3.14/180.0)-robot_w+robot_s,
                       0,1,0);
         } else {
+            cout << "Currently could not move the view." << endl;
             gluLookAt(25*sin(temp_phi*3.14/180.0)-robot_a+robot_d,6+temp_camdy,-25+25*cos(temp_phi*3.14/180.0)-robot_w+robot_s,
                       -robot_a+robot_d,25*sin((temp_theta)*3.14/180.0)+temp_camdy,-26-robot_w+robot_s,
                       0,1,0);
@@ -1177,6 +1188,82 @@ void display()
     
     glutSolidSphere(.75,100,100);
     glPopMatrix();
+    
+    // -------------------------- roller coaster --------------------------
+    std::vector<std::array<double, 3>> rcl;
+    std::vector<std::array<double, 3>> rcr;
+    
+    
+    GLfloat grey[] = {0.9,0.9,0.9,0};
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, grey);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, grey);
+    glMateriali(GL_FRONT_AND_BACK,GL_SHININESS,10);
+    
+    glBegin(GL_LINE_STRIP);
+    double xcr, ycr, zcr;   //Points on the Catmull-Rom spline
+    
+    for(int i = 1; i < numPts-2; i++) {
+        for(int k = 0;  k < 50; k++){    //50 points
+            float t = k*0.02;  //Interpolation parameter
+            //--Eq. (7.34)--
+            xcr = x1_pt[i] + 0.5*t*(-x1_pt[i-1]+x1_pt[i+1])
+            + t*t*(x1_pt[i-1] - 2.5*x1_pt[i] + 2*x1_pt[i+1] - 0.5*x1_pt[i+2])
+            + t*t*t*(-0.5*x1_pt[i-1] + 1.5*x1_pt[i] - 1.5*x1_pt[i+1] + 0.5*x1_pt[i+2]);
+            ycr = y_pt[i] + 0.5*t*(-y_pt[i-1]+y_pt[i+1])
+            + t*t*(y_pt[i-1] - 2.5*y_pt[i] + 2*y_pt[i+1] - 0.5*y_pt[i+2])
+            + t*t*t*(-0.5*y_pt[i-1] + 1.5*y_pt[i] - 1.5*y_pt[i+1] + 0.5*y_pt[i+2]);
+            zcr = z_pt[i] + 0.5*t*(-z_pt[i-1]+z_pt[i+1])
+            + t*t*(z_pt[i-1] - 2.5*z_pt[i] + 2*z_pt[i+1] - 0.5*z_pt[i+2])
+            + t*t*t*(-0.5*z_pt[i-1] + 1.5*z_pt[i] - 1.5*z_pt[i+1] + 0.5*z_pt[i+2]);
+            glVertex3f(xcr, ycr, zcr);
+            rcl.push_back({xcr, ycr, zcr});
+        }
+    }
+    glEnd();
+    
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, grey);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, grey);
+    glMateriali(GL_FRONT_AND_BACK,GL_SHININESS,10);
+    glBegin(GL_LINE_STRIP);
+    
+    for(int i = 1; i < numPts-2; i++) {
+        for(int k = 0;  k < 50; k++){    //50 points
+            float t = k*0.02;  //Interpolation parameter
+            //--Eq. (7.34)--
+            xcr = x2_pt[i] + 0.5*t*(-x2_pt[i-1]+x2_pt[i+1])
+            + t*t*(x2_pt[i-1] - 2.5*x2_pt[i] + 2*x2_pt[i+1] - 0.5*x2_pt[i+2])
+            + t*t*t*(-0.5*x2_pt[i-1] + 1.5*x2_pt[i] - 1.5*x2_pt[i+1] + 0.5*x2_pt[i+2]);
+            ycr = y_pt[i] + 0.5*t*(-y_pt[i-1]+y_pt[i+1])
+            + t*t*(y_pt[i-1] - 2.5*y_pt[i] + 2*y_pt[i+1] - 0.5*y_pt[i+2])
+            + t*t*t*(-0.5*y_pt[i-1] + 1.5*y_pt[i] - 1.5*y_pt[i+1] + 0.5*y_pt[i+2]);
+            zcr = z_pt[i] + 0.5*t*(-z_pt[i-1]+z_pt[i+1])
+            + t*t*(z_pt[i-1] - 2.5*z_pt[i] + 2*z_pt[i+1] - 0.5*z_pt[i+2])
+            + t*t*t*(-0.5*z_pt[i-1] + 1.5*z_pt[i] - 1.5*z_pt[i+1] + 0.5*z_pt[i+2]);
+            glVertex3f(xcr, ycr, zcr);
+            rcr.push_back({xcr, ycr, zcr});
+        }
+    }
+    glEnd();
+    
+    
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, grey);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, grey);
+    glMateriali(GL_FRONT_AND_BACK,GL_SHININESS,10);
+    
+    double tile_size = 2;
+    double quads_size = (numPts-3)*50-1;
+    
+    glNormal3f(0,1,0);
+    
+    glBegin(GL_QUADS);
+    for (double i = 0; i < quads_size; i++) {
+        glVertex3f(rcl[i][0], rcl[i][1], rcl[i][2]);
+        glVertex3f(rcr[i][0], rcr[i][1], rcr[i][2]);
+        glVertex3f(rcr[i+1][0], rcr[i+1][1], rcr[i+1][2]);
+        glVertex3f(rcl[i+1][0], rcl[i+1][1], rcl[i+1][2]);
+    }
+    
+    glEnd();
 
 //
 //    glMatrixMode(GL_MODELVIEW);
