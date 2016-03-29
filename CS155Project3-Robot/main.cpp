@@ -28,6 +28,14 @@ void menu_func(int value);
 void keyboard(unsigned char key, int x, int y);
 void keyboardup(unsigned char key, int x, int y);
 void pick();
+void render_obj();
+void draw_mirror();
+void draw_2D_headup(double a, double b, double c, double d);
+void draw_text(std::string text, int x, int y, void * font);
+void draw_intro_text();
+void draw_intro_box();
+void draw_intro_start();
+void animate(int value);
 
 // daring the robot
 float ver[8][3] =
@@ -101,6 +109,10 @@ void drawRobot(GLfloat q_color[4], double head_move, double armr, double legr, d
 
 void drawFloor();
 
+// rendering
+void render_obj();
+void draw_mirror();
+
 
 // -------------------------------------------------------------------
 //                   basic windows / viewing tuning
@@ -138,11 +150,24 @@ double first_person = 0;
 double view_changed = 0;
 
 // roller coaster
+std::vector<std::array<double, 3>> rcl;
+std::vector<std::array<double, 3>> rcr;
 int numPts = 16;
 double x1_pt[] = {4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4};
 double x2_pt[] = {6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6};
 double y_pt[] = {0,1,4,6,5,9.10,11,7,8,5,3,4,6,7,5};
 double z_pt[] = {-1,-4,-8,-12,-18,-20,-22,-34,-40,-46,-55,-60,-68,-70,-89,-94};
+
+// animation
+int anim = 0;
+int startTime = 0;
+int prevTime = 0;
+int travel = 0;
+int startanim = 0;
+#define TIMERMSECS 33
+
+// starting menu
+int started = 0;
 
 
 // -------------------------------------------------------------------
@@ -157,6 +182,7 @@ enum MENU_TYPE
     M_OPTIONS_S_LIGHT,
     M_HELP_CONTROL,
     M_VIEW_FIRSTPERSON,
+    M_ANIM_RC,
 };
 
 double amb_light = 1;
@@ -196,9 +222,15 @@ int main(int argc, char **argv)
     glutKeyboardFunc(keyboard);
     glutKeyboardUpFunc(keyboardup);
     
-    
     // initalize opengl parameters
     init();
+    glutTimerFunc(TIMERMSECS, animate, 0);
+    startTime = glutGet(GLUT_ELAPSED_TIME);
+    prevTime = startTime;
+    
+    gluLookAt(25*sin(phi*3.14/180.0),10+camdy,25*cos(phi*3.14/180.0),
+              0,25*sin(theta*3.14/180.0)+camdy,0,
+              0,1,0);
     
     // loop until something happens
     glutMainLoop();
@@ -214,7 +246,7 @@ void initLighting()
     GLfloat qaDiffuseLight2[]    = {1, 1, 1, 1.0};
     
     // Light source position
-    GLfloat qaLightPosition1[]    = {-2, 5, -18, 1};
+    GLfloat qaLightPosition1[]    = {-6, 8, -14, 1};
     GLfloat qaLightPosition2[]    = {1, -0.9, -7, 1};
     
     // Enable lighting
@@ -289,6 +321,11 @@ void mouse(int button, int state, int x, int y)
         lastx = x;
         lasty = y;
 //        cout << "Left click with cursor at " << x << " " << y << endl;
+        // button 01
+        if (x >= 120 && x<= 220 && y >= 565 && y <= 645) {
+            cout << "button1" << endl;
+            startanim = 1;
+        }
     }
     if (button == GLUT_LEFT_BUTTON && state == GLUT_UP){
 //        cout << "Finished left click with cursor at " << x << " " << y << endl;
@@ -566,6 +603,14 @@ void menu_func(int value)
             cout << "" << endl;
         }
             break;
+        case M_ANIM_RC: {
+            if (startanim == 0) {
+                startanim = 1;
+                anim = 1;
+                cout << "Roller Ccoaster Animation." << endl;
+            }
+        }
+            break;
         default:
             break;
     }
@@ -589,10 +634,14 @@ int make_menu ()
     int view = glutCreateMenu(menu_func);
     glutAddMenuEntry("First Person View", M_VIEW_FIRSTPERSON);
     
+    int animation = glutCreateMenu(menu_func);
+    glutAddMenuEntry("Roller Ccoaster", M_ANIM_RC);
+    
     int main = glutCreateMenu(menu_func);
     glutAddSubMenu("Manage Light", options);
     glutAddSubMenu("Help", help);
     glutAddSubMenu("View", view);
+    glutAddSubMenu("Animation", animation);
     
     glutAttachMenu(GLUT_RIGHT_BUTTON);
     
@@ -960,7 +1009,7 @@ void drawFoot2(GLfloat q_color[4]){
 
 
 void drawFloor(){
-    GLfloat green[] = {0,1,0,0};			// green
+    GLfloat green[] = {0,1,0,0.5};			// green
     glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, green);
     glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, green);
     glMateriali(GL_FRONT_AND_BACK,GL_SHININESS,10);
@@ -987,121 +1036,9 @@ void drawFloor(){
 }
 
 
-// ----------------------------------------------------------------------------------------------
-//                                    Additional Features
-// ----------------------------------------------------------------------------------------------
-
-void pick(){
-    for (int i = 0; i < 1; i++) {
-        if (picked == 0) {
-            if(fabs(pickable[i][0]-(-robot_a+robot_d)) <= 1 && fabs(pickable[i][2]-(-robot_w+robot_s)) <= 1){
-                picked = 1;
-//                cout << "picked at x: " << -robot_a+robot_d << " - z: " << -robot_w+robot_s << endl;
-            }
-        } else {
-            picked = 0;
-//            cout << "picked at x: " << -robot_a+robot_d << " - z: " << -robot_w+robot_s << endl;
-        }
-    }
-}
-
-
-// ----------------------------------------------------------------------------------------------
-//                                            Display
-// ----------------------------------------------------------------------------------------------
-double p = 0;
-void display()
+void render_obj()
 {
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    //                           error reports
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//    cout << gluErrorString(glGetError()) << endl;
-    
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    //                           init display
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    
-    // clear buffers
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-    
-    // initialize modelview matrix
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    //                         all about viewpoint
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    
-    // set viewpoint position/orientation
-    // head_mode is the mode that only move the head but not camera
-    if (h_pressed == 1) {
-        if (head_mode == 0) {
-            temp_phi = phi;
-            temp_theta = theta;
-            temp_camdy = camdy;
-            head_mode = 1;
-            phi = 0;
-            theta = 0;
-        }
-    } else {
-        if (head_mode == 1) {
-            phi = temp_phi;
-            theta = temp_theta;
-            camdy = temp_camdy;
-            head_mode = 0;
-        } else {
-            temp_phi = phi;
-            temp_theta = theta;
-            temp_camdy = camdy;
-        }
-    }
-    
-    // check if first persion perspective
-    if (first_person == 1) {
-        // view direction
-        if (h_pressed == 0) {
-            gluLookAt(25*sin(phi*3.14/180.0)-robot_a+robot_d,6+camdy,-25+25*cos(phi*3.14/180.0)-robot_w+robot_s,
-                      5*sin(phi*3.14/180.0)-robot_a+robot_d,5*sin((theta)*3.14/180.0)+camdy,-26+5*cos(phi*3.14/180.0)-robot_w+robot_s,
-                      0,1,0);
-        } else {
-            cout << "Currently could not move the view." << endl;
-            gluLookAt(25*sin(temp_phi*3.14/180.0)-robot_a+robot_d,6+temp_camdy,-25+25*cos(temp_phi*3.14/180.0)-robot_w+robot_s,
-                      -robot_a+robot_d,25*sin((temp_theta)*3.14/180.0)+temp_camdy,-26-robot_w+robot_s,
-                      0,1,0);
-        }
-
-    } else {
-        if (h_pressed == 0) {
-            gluLookAt(25*sin(phi*3.14/180.0),10+camdy,25*cos(phi*3.14/180.0),
-                      0,25*sin(theta*3.14/180.0)+camdy,0,
-                      0,1,0);
-        } else {
-            gluLookAt(25*sin(temp_phi*3.14/180.0),10+temp_camdy,25*cos(temp_phi*3.14/180.0),
-                      0,25*sin(temp_theta*3.14/180.0)+temp_camdy,0,
-                      0,1,0);
-        }
-    }
-    
-    
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    //                                menu
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    make_menu();
-    
-    
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    //                          light and object
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    
-    // =============================================
-    //                 setting light
-    // =============================================
-    
-    GLfloat white[] = {1,1,1,0};
-    
-    // =============================================
-    //                draw triangles
-    // =============================================
+    // -------------------------- triangles --------------------------
     GLfloat red[] = {1,0,0,0};              // red
     glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, red);
     glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, red);
@@ -1114,9 +1051,9 @@ void display()
     glVertex3f(0,5,-9);
     glEnd();
     
-    GLfloat yellow[] = {1,1,0,0};              // yellow
-    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, yellow);
-    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, yellow);
+    GLfloat blue[] = {0.5,0.8,0.9,0};              // blue
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, blue);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, blue);
     glMateriali(GL_FRONT_AND_BACK,GL_SHININESS,20);
     
     glNormal3f(1,0,0);
@@ -1126,14 +1063,8 @@ void display()
     glVertex3f(0,5,-50);
     glEnd();
     
-    // =============================================
-    //                  draw quads
-    // =============================================
-    drawFloor();
     
-    // =============================================
-    //               draw Sphere objects
-    // =============================================
+    // -------------------------- sphere --------------------------
     GLfloat purple[] = {1,0,1,0};			// purple
     glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, purple);
     glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, purple);
@@ -1149,7 +1080,7 @@ void display()
             obj_01_x = -robot_a+robot_d;
             obj_01_y = -0.2;
             obj_01_z = -robot_w+robot_s;
-//            cout << "left the obj at x: " << obj_01_x << " - z: " << obj_01_z << endl;
+            //            cout << "left the obj at x: " << obj_01_x << " - z: " << obj_01_z << endl;
             if (fmod(-robot_w+robot_s, 2) == 0) {
                 obj_01_z = obj_01_z-2;
             } else {
@@ -1166,10 +1097,10 @@ void display()
                 obj_01_z = pickable[0][2];
                 pickable[0] = {obj_01_x,obj_01_y,obj_01_z,0};
                 obj_01 = 3;
-//                cout << "robot at x: " << -robot_a+robot_d << " - z: " << -robot_w+robot_s << endl;
+                //                cout << "robot at x: " << -robot_a+robot_d << " - z: " << -robot_w+robot_s << endl;
             } else {
                 // do nothing
-//                cout << "robot at x: " << -robot_a+robot_d << " - z: " << -robot_w+robot_s << endl;
+                //                cout << "robot at x: " << -robot_a+robot_d << " - z: " << -robot_w+robot_s << endl;
             }
         }
     }
@@ -1189,10 +1120,8 @@ void display()
     glutSolidSphere(.75,100,100);
     glPopMatrix();
     
-    // -------------------------- roller coaster --------------------------
-    std::vector<std::array<double, 3>> rcl;
-    std::vector<std::array<double, 3>> rcr;
     
+    // -------------------------- roller coaster --------------------------
     
     GLfloat grey[] = {0.9,0.9,0.9,0};
     glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, grey);
@@ -1264,32 +1193,10 @@ void display()
     }
     
     glEnd();
-
-//
-//    glMatrixMode(GL_MODELVIEW);
-//    glTranslatef(0, 0, -3);
-//    
-//    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, white);
-//    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, white);
-//    glMateriali(GL_FRONT_AND_BACK,GL_SHININESS,50);
-//    glNormal3f(0,0,1);
-//    glutSolidSphere(.74,200,100);
-//
-//    glMatrixMode(GL_MODELVIEW);
-//    
-//    GLUquadricObj *quadratic;
-//    quadratic = gluNewQuadric();
-//    GLfloat rcolor[] = {0.5,0.4,0.3};
-//    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, rcolor);
-//    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, rcolor);
-//    glMateriali(GL_FRONT_AND_BACK,GL_SHININESS,50);
-//    glNormal3f(0,0,1);
-//    glPushMatrix();
-//    glRotatef(45, 0, 1, 0);
-//    glTranslatef(0, 3, 2);
-//    gluCylinder(quadratic, 0.1f, 0.1f, 10, 32, 32);
-//    glPopMatrix();
     
+    
+    // -------------------------- robot --------------------------
+    GLfloat white[] = {1,1,1,0};
     double temp_move1 = -robot_w+robot_s;
     double temp_move2 = -robot_a+robot_d;
     double armr = pow(-1,fmod(temp_move1,2.0));
@@ -1300,12 +1207,367 @@ void display()
     double arm_angl_d = 15;
     double leg_angl = 15;
     
+    
     glPushMatrix();
     drawRobot(white,h_pressed,armr,legr,arm_angl_u1,arm_angl_u2,arm_angl_d,leg_angl);
     glPopMatrix();
+}
+
+
+void draw_mirror()
+{
+    // -------------------------- mirror --------------------------
+    GLfloat gold[] = {0.9,0.9,0,0};
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, gold);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, gold);
+    glMateriali(GL_FRONT_AND_BACK,GL_SHININESS,60);
+    
+    glPushMatrix();
+    glBegin(GL_QUADS);
+    glVertex3f(-5, -1, -16);
+    glVertex3f(-1, -1, -16);
+    glVertex3f(-1, 7, -16);
+    glVertex3f(-5, 7, -16);
+    glEnd();
+    glPopMatrix();
+}
+
+
+void draw_2D_headup(double a, double b, double c, double d)
+{
+    // -------------------------- 2D head up display --------------------------
+    glDisable(GL_STENCIL_TEST);
+    glDisable(GL_DEPTH_TEST);
+    
+    //* set up a 2d world
+    glPushMatrix();
+    glLoadIdentity();
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    gluOrtho2D(-1,1,-1,1);
+    
+    // draw a heads up display
+    GLfloat green[] = {0,1,0,0}; // green
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, green);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, green);
+    glMateriali(GL_FRONT_AND_BACK,GL_SHININESS,40);
+    
+    glBegin(GL_QUADS);
+    glVertex2d(a, b);
+    glVertex2d(a, d);
+    glVertex2d(c, d);
+    glVertex2d(c, b);
+    glEnd();
+    
+    // restore 3d viewing
+    glPopMatrix();
+    glMatrixMode(GL_MODELVIEW);
+    glPopMatrix();
+    
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_STENCIL_TEST);
+}
+
+
+void draw_text(std::string text, int x, int y, void * font)
+{
+    // display text
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    gluOrtho2D(0.0, windowWidth, 0.0, windowHeight);
+    
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+    
+    GLfloat white[] = {1,1,1,0}; // white
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, white);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, white);
+    glMateriali(GL_FRONT_AND_BACK,GL_SHININESS,40);
+    
+    glNormal3f(1,0,0);
+    
+    glRasterPos2i(x, y);
+    
+    for (string::iterator i = text.begin(); i != text.end(); ++i)
+    {
+        char c = *i;
+        glutBitmapCharacter(font, c);
+    }
+    
+    glMatrixMode(GL_MODELVIEW);
+    glPopMatrix();
+    
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+}
+
+void draw_intro_text()
+{
+    draw_text("Welcome to the Robot Land!", 20, 530, GLUT_BITMAP_TIMES_ROMAN_24);
+    draw_text("Please at first take the roller coaster", 20, 500, GLUT_BITMAP_TIMES_ROMAN_24);
+    draw_text("by clicking the button below. Then ", 20, 470, GLUT_BITMAP_TIMES_ROMAN_24);
+    draw_text("you can control the robot and do", 20, 440, GLUT_BITMAP_TIMES_ROMAN_24);
+    draw_text("some tricks.", 20, 410, GLUT_BITMAP_TIMES_ROMAN_24);
+    draw_text("Note that the menu is accessable", 20, 380, GLUT_BITMAP_TIMES_ROMAN_24);
+    draw_text("by right clicking of the mouse, or", 20, 350, GLUT_BITMAP_TIMES_ROMAN_24);
+    draw_text("by pressing the 'm' button.", 20, 320, GLUT_BITMAP_TIMES_ROMAN_24);
+}
+
+
+void draw_intro_box()
+{
+    draw_2D_headup(-1, 1, -0.2, 0.6);
+    draw_intro_start();
+    
+    draw_text("ROBOT LAND", 40, 740, GLUT_BITMAP_TIMES_ROMAN_24);
+    draw_text("Xiaotian Wang", 130, 700, GLUT_BITMAP_HELVETICA_18);
+    draw_text("Amanda Yin", 130, 680, GLUT_BITMAP_HELVETICA_18);
+}
+
+
+void draw_intro_start()
+{
+    draw_2D_headup(-0.7, -0.6, -0.45, -0.4);
+    draw_text("Start!", 145, 195, GLUT_BITMAP_HELVETICA_18);
+}
+
+
+void animate(int value)
+{
+    if (anim == 0) {
+        // comment to disable rc at first
+        anim = 1;
+    } else {
+        // Set up the next timer tick (do this first)
+        if (travel < 13*50) {
+            glutTimerFunc(TIMERMSECS, animate, 0);
+        }
+        
+        // Measure the elapsed time
+        int currTime = glutGet(GLUT_ELAPSED_TIME);
+        int timeSincePrevFrame = currTime - prevTime;
+        int elapsedTime = currTime - startTime;
+        
+        if (travel < 13*50) {
+            travel += 1;
+        } else {
+            travel = 0;
+            cout << "here" << endl;
+            anim = 0;
+        }
+        
+        // Force a redisplay to render the new image
+        glutPostRedisplay();
+        
+        prevTime = currTime;
+    }
+}
+
+
+
+// ----------------------------------------------------------------------------------------------
+//                                    Additional Features
+// ----------------------------------------------------------------------------------------------
+
+void pick(){
+    for (int i = 0; i < 1; i++) {
+        if (picked == 0) {
+            if(fabs(pickable[i][0]-(-robot_a+robot_d)) <= 1 && fabs(pickable[i][2]-(-robot_w+robot_s)) <= 1){
+                picked = 1;
+//                cout << "picked at x: " << -robot_a+robot_d << " - z: " << -robot_w+robot_s << endl;
+            }
+        } else {
+            picked = 0;
+//            cout << "picked at x: " << -robot_a+robot_d << " - z: " << -robot_w+robot_s << endl;
+        }
+    }
+}
+
+
+// ----------------------------------------------------------------------------------------------
+//                                            Display
+// ----------------------------------------------------------------------------------------------
+
+void display()
+{
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //                           error reports
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//    cout << gluErrorString(glGetError()) << endl;
+    
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //                           init display
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    
+    // clear buffers
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+    
+    // initialize modelview matrix
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //                           set viewpoint
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    
+    // set viewpoint position/orientation
+    // head_mode is the mode that only move the head but not camera
+    if (h_pressed == 1) {
+        if (head_mode == 0) {
+            temp_phi = phi;
+            temp_theta = theta;
+            temp_camdy = camdy;
+            head_mode = 1;
+            phi = 0;
+            theta = 0;
+        }
+    } else {
+        if (head_mode == 1) {
+            phi = temp_phi;
+            theta = temp_theta;
+            camdy = temp_camdy;
+            head_mode = 0;
+        } else {
+            temp_phi = phi;
+            temp_theta = theta;
+            temp_camdy = camdy;
+        }
+    }
+    
+    // check if first persion perspective
+    if (first_person == 1) {
+        // view direction
+        if (h_pressed == 0) {
+            gluLookAt(25*sin(phi*3.14/180.0)-robot_a+robot_d,6+camdy,-25+25*cos(phi*3.14/180.0)-robot_w+robot_s,
+                      5*sin(phi*3.14/180.0)-robot_a+robot_d,5*sin((theta)*3.14/180.0)+camdy,-26+5*cos(phi*3.14/180.0)-robot_w+robot_s,
+                      0,1,0);
+        } else {
+            cout << "Currently could not move the view." << endl;
+            gluLookAt(25*sin(temp_phi*3.14/180.0)-robot_a+robot_d,6+temp_camdy,-25+25*cos(temp_phi*3.14/180.0)-robot_w+robot_s,
+                      -robot_a+robot_d,25*sin((temp_theta)*3.14/180.0)+temp_camdy,-26-robot_w+robot_s,
+                      0,1,0);
+        }
+
+    } else {
+        if (anim == 0) {
+            if (h_pressed == 0) {
+//                                cout << "no animation" << endl;
+                //                cout << "x: " << 25*sin(phi*3.14/180.0) << " z: " << 25*cos(phi*3.14/180.0) << endl;
+                gluLookAt(25*sin(phi*3.14/180.0),10+camdy,25*cos(phi*3.14/180.0),
+                          0,25*sin(theta*3.14/180.0)+camdy,0,
+                          0,1,0);
+            } else {
+                gluLookAt(25*sin(temp_phi*3.14/180.0),10+temp_camdy,25*cos(temp_phi*3.14/180.0),
+                          0,25*sin(temp_theta*3.14/180.0)+temp_camdy,0,
+                          0,1,0);
+            }
+        } else {
+            cout << "there" << endl;
+            gluLookAt(rcl[travel][0],rcl[travel][1]+0.1,rcl[travel][2],
+                      rcl[travel+1][0],rcl[travel+1][1]+0.1,rcl[travel+1][2],
+                      0,1,0);
+        }
+        
+    }
     
     
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //                                menu
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    
+    if (anim == 0) {
+        make_menu();
+    }
+    
+    
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //                           Introduction
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    
+    if (started == 0) {
+        draw_intro_box();
+        draw_intro_text();
+    }
+    
+    
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //                               animation
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    
+    if (startanim == 1) {
+        startanim = 0;
+        if (started == 0) {
+            started = 1;
+        }
+        glutTimerFunc(TIMERMSECS, animate, 0);
+    } else {
+        // do nothing
+    }
+    
+    
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //                               objects
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    
+    // begin reflection
+    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+    glDisable(GL_DEPTH_TEST);
+    
+    glEnable(GL_STENCIL_TEST);
+    
+    // tag the floor
+    glStencilFunc(GL_EQUAL, 0, 3);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
+    
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    
+    glBegin(GL_QUADS);
+    glVertex3f(-500,-1,500);
+    glVertex3f(-500,-1,-500);
+    glVertex3f(500,-1,-500);
+    glVertex3f(500,-1,500);
+    glEnd();
+    
+    glDisable(GL_CULL_FACE);
+    glEnable(GL_DEPTH_TEST);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    
+    glDisable(GL_STENCIL_TEST);
+    
+    // draw objects
+    render_obj();
+    draw_mirror();
+    
+    // draw "reflected objects"
+    glEnable(GL_STENCIL_TEST);
+    
+    glStencilFunc(GL_EQUAL, 1, 3);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+    
+    glPushMatrix();
+    glScalef(1,-1,1);
+    glTranslatef(0, +2, 0);
+    render_obj();
+    draw_mirror();
+    glPopMatrix();
+    
+    glDisable(GL_STENCIL_TEST);
+    
+    // draw blended floor
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    
+    drawFloor();
+    
+    glDisable(GL_BLEND);
+
     // swap buffers
     glutSwapBuffers();
     
 }
+
+
