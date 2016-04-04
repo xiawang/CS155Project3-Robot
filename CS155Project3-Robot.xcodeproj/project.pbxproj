@@ -11,6 +11,10 @@
 		A4866A661C8AB6B8006F1BBA /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A4866A651C8AB6B8006F1BBA /* Cocoa.framework */; };
 		A4866A681C8AB6BD006F1BBA /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A4866A671C8AB6BD006F1BBA /* OpenGL.framework */; };
 		A4866A6A1C8AB6C3006F1BBA /* GLUT.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A4866A691C8AB6C3006F1BBA /* GLUT.framework */; };
+		A4DFA34A1CACF10A003954B1 /* image_DXT.c in Sources */ = {isa = PBXBuildFile; fileRef = A4DFA3401CACF10A003954B1 /* image_DXT.c */; };
+		A4DFA34B1CACF10A003954B1 /* image_helper.c in Sources */ = {isa = PBXBuildFile; fileRef = A4DFA3421CACF10A003954B1 /* image_helper.c */; };
+		A4DFA34C1CACF10A003954B1 /* SOIL.c in Sources */ = {isa = PBXBuildFile; fileRef = A4DFA3441CACF10A003954B1 /* SOIL.c */; };
+		A4DFA34D1CACF10A003954B1 /* stb_image_aug.c in Sources */ = {isa = PBXBuildFile; fileRef = A4DFA3461CACF10A003954B1 /* stb_image_aug.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -31,6 +35,18 @@
 		A4866A651C8AB6B8006F1BBA /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 		A4866A671C8AB6BD006F1BBA /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
 		A4866A691C8AB6C3006F1BBA /* GLUT.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = GLUT.framework; path = System/Library/Frameworks/GLUT.framework; sourceTree = SDKROOT; };
+		A4DFA3401CACF10A003954B1 /* image_DXT.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = image_DXT.c; sourceTree = "<group>"; };
+		A4DFA3411CACF10A003954B1 /* image_DXT.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = image_DXT.h; sourceTree = "<group>"; };
+		A4DFA3421CACF10A003954B1 /* image_helper.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = image_helper.c; sourceTree = "<group>"; };
+		A4DFA3431CACF10A003954B1 /* image_helper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = image_helper.h; sourceTree = "<group>"; };
+		A4DFA3441CACF10A003954B1 /* SOIL.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = SOIL.c; sourceTree = "<group>"; };
+		A4DFA3451CACF10A003954B1 /* SOIL.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SOIL.h; sourceTree = "<group>"; };
+		A4DFA3461CACF10A003954B1 /* stb_image_aug.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = stb_image_aug.c; sourceTree = "<group>"; };
+		A4DFA3471CACF10A003954B1 /* stb_image_aug.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stb_image_aug.h; sourceTree = "<group>"; };
+		A4DFA3481CACF10A003954B1 /* stbi_DDS_aug_c.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stbi_DDS_aug_c.h; sourceTree = "<group>"; };
+		A4DFA3491CACF10A003954B1 /* stbi_DDS_aug.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stbi_DDS_aug.h; sourceTree = "<group>"; };
+		A4DFA3531CAD04E3003954B1 /* glass.tga */ = {isa = PBXFileReference; lastKnownFileType = file; path = glass.tga; sourceTree = "<group>"; };
+		A4DFA36D1CB0E923003954B1 /* cherry.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = cherry.png; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -69,6 +85,18 @@
 		A4866A5D1C8AB6A9006F1BBA /* CS155Project3-Robot */ = {
 			isa = PBXGroup;
 			children = (
+				A4DFA36D1CB0E923003954B1 /* cherry.png */,
+				A4DFA3531CAD04E3003954B1 /* glass.tga */,
+				A4DFA3401CACF10A003954B1 /* image_DXT.c */,
+				A4DFA3411CACF10A003954B1 /* image_DXT.h */,
+				A4DFA3421CACF10A003954B1 /* image_helper.c */,
+				A4DFA3431CACF10A003954B1 /* image_helper.h */,
+				A4DFA3441CACF10A003954B1 /* SOIL.c */,
+				A4DFA3451CACF10A003954B1 /* SOIL.h */,
+				A4DFA3461CACF10A003954B1 /* stb_image_aug.c */,
+				A4DFA3471CACF10A003954B1 /* stb_image_aug.h */,
+				A4DFA3481CACF10A003954B1 /* stbi_DDS_aug_c.h */,
+				A4DFA3491CACF10A003954B1 /* stbi_DDS_aug.h */,
 				A4866A5E1C8AB6A9006F1BBA /* main.cpp */,
 			);
 			path = "CS155Project3-Robot";
@@ -130,6 +158,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A4DFA34B1CACF10A003954B1 /* image_helper.c in Sources */,
+				A4DFA34D1CACF10A003954B1 /* stb_image_aug.c in Sources */,
+				A4DFA34A1CACF10A003954B1 /* image_DXT.c in Sources */,
+				A4DFA34C1CACF10A003954B1 /* SOIL.c in Sources */,
 				A4866A5F1C8AB6A9006F1BBA /* main.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -247,6 +279,7 @@
 				A4866A641C8AB6A9006F1BBA /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};

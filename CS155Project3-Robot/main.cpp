@@ -9,10 +9,13 @@
 //
 
 #include <iostream>
+#include <OpenGL/gl.h>
+#include <OpenGL/glu.h>
 #include <glut/glut.h>
 #include <math.h>
 #include <vector>
 #include <array>
+#include "SOIL.h"
 
 // -------------------------------------------------------------------
 //                        function prototypes
@@ -29,13 +32,23 @@ void keyboard(unsigned char key, int x, int y);
 void keyboardup(unsigned char key, int x, int y);
 void pick();
 void render_obj();
+void drawTexturedCube();
 void draw_mirror();
 void draw_2D_headup(double a, double b, double c, double d);
 void draw_text(std::string text, int x, int y, void * font);
 void draw_intro_text();
 void draw_intro_box();
 void draw_intro_start();
+void draw_billboard();
 void animate(int value);
+
+bool makeFnameWithPath(char* fname, char* pathName, char* fnameWithPath);
+bool LoadGLTextures(char* fname);
+
+void billboardCheatSphericalBegin();
+void billboardEnd();
+void draw_clipping_plane();
+void drawFog();
 
 // daring the robot
 float ver[8][3] =
@@ -169,6 +182,13 @@ int startanim = 0;
 // starting menu
 int started = 0;
 
+// texture
+#define MAX_NO_TEXTURES 1
+#define MAX_FILE_NAME 512
+
+// fog
+double fog = 0;
+
 
 // -------------------------------------------------------------------
 //                                  menu
@@ -204,6 +224,7 @@ int main(int argc, char **argv)
     
     // initialize glut
     glutInit(&argc, argv);
+    char* fname="./glass.tga";
     
     // set window size
     glutInitWindowSize(windowWidth,windowHeight);
@@ -296,7 +317,14 @@ void init()
     // initialize background color to black
     glClearColor(0,0,0,0);
     
+    // preload textures
+    LoadGLTextures("./glass.tga");
+    
+    // initialize the light
     initLighting();
+    
+    // init speciall effect
+//    glEnable(GL_FOG);
     
     glEnable(GL_DEPTH_TEST);
 }
@@ -461,6 +489,16 @@ void keyboard(unsigned char key, int x, int y) {
             pick();
             glutPostRedisplay();
             break;
+        case 'F':
+            pick();
+            if (fog == 0) {
+                fog  = 1;
+            } else {
+                fog = 0;
+            }
+            cout << fog << endl;
+            glutPostRedisplay();
+            break;
         // see control options
         case 'm':
             cout << "" << endl;
@@ -474,6 +512,7 @@ void keyboard(unsigned char key, int x, int y) {
             cout << "camera up     -------   'z'" << endl;
             cout << "camera down   -------   'x'" << endl;
             cout << "camera back   -------   't'" << endl;
+            cout << "fog mode      -------   'F'" << endl;
             cout << "" << endl;
             cout << "          ~ Robot ~" << endl;
             cout << "================================" << endl;
@@ -589,6 +628,7 @@ void menu_func(int value)
             cout << "camera up     -------   'z'" << endl;
             cout << "camera down   -------   'x'" << endl;
             cout << "camera back   -------   't'" << endl;
+            cout << "fog mode      -------   'F'" << endl;
             cout << "" << endl;
             cout << "          ~ Robot ~" << endl;
             cout << "================================" << endl;
@@ -676,6 +716,100 @@ void quad(int a,int b,int c,int d,GLfloat q_color[4])
     glVertex3fv(ver[c]);
     glVertex3fv(ver[d]);
     glEnd();
+}
+
+void drawTexturedCube()
+{
+    glPushMatrix();
+    glTranslatef(0,2,0);
+    
+    glBegin(GL_QUADS);
+    // front face
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  1.0f);
+    glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  1.0f);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f,  1.0f);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f,  1.0f);
+    // Back Face
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.0f);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f( 1.0f,  1.0f, -1.0f);
+    glTexCoord2f(0.0f, 0.0f); glVertex3f( 1.0f, -1.0f, -1.0f);
+    // Top Face
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.0f);
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f,  1.0f,  1.0f);
+    glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f,  1.0f,  1.0f);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f, -1.0f);
+    // Bottom Face
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f( 1.0f, -1.0f, -1.0f);
+    glTexCoord2f(0.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  1.0f);
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  1.0f);
+    // Right face
+    glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f, -1.0f, -1.0f);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f, -1.0f);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f( 1.0f,  1.0f,  1.0f);
+    glTexCoord2f(0.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  1.0f);
+    // Left Face
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  1.0f);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f,  1.0f,  1.0f);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.0f);
+    glEnd();
+    glPopMatrix();
+    
+}
+
+bool makeFnameWithPath(char* fname, char* pathName, char* fnameWithPath)
+{
+    
+    int last = -1;
+    for (int i = 0; last==-1 && i < MAX_FILE_NAME; ++i) {
+        if (pathName[i] == 0) {
+            last=i;
+            if (i>0 && pathName[i-1]!='/') {
+                fnameWithPath[i]='/';
+                last ++;
+            }
+            
+        }
+        else {
+            fnameWithPath[i]=pathName[i];
+        }
+    }
+    
+    // if the pathname exceeds our space bound we return false
+    // we could make this more robust by dynamically allocating the right amout of space!
+    if (last == -1) {
+        return false;
+    }
+    
+    bool done=false;
+    
+    for (int i=0; !done && i<MAX_FILE_NAME; ++i) {
+        fnameWithPath[last+i] = fname[i];
+        if (fname[i]==0) {
+            done=true;
+        }
+    }
+    return done;
+}
+
+bool LoadGLTextures(char* fname)
+{
+    int textureId = SOIL_load_OGL_texture(fname, SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_INVERT_Y);
+    cout << textureId << endl;
+    if(textureId == 0){
+        return false;
+    }
+    
+    glBindTexture(GL_TEXTURE_2D, textureId);
+    
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+    
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
+    
+    return true;
 }
 
 void colorcube(GLfloat q_color[4])
@@ -1211,6 +1345,28 @@ void render_obj()
     glPushMatrix();
     drawRobot(white,h_pressed,armr,legr,arm_angl_u1,arm_angl_u2,arm_angl_d,leg_angl);
     glPopMatrix();
+    
+    
+    // -------------------------- textured --------------------------
+    glPushMatrix();
+    glTranslatef(+4, -2, 0);
+    
+    // cube 1
+    glEnable(GL_TEXTURE_2D);
+    drawTexturedCube();
+    glDisable(GL_TEXTURE_2D);
+    
+    // cube 2
+    glPushMatrix();
+    glEnable(GL_TEXTURE_2D);
+    glScalef(0.7, 0.7, 0.7);
+    glTranslatef(-2.0, 0.3, -4.0);
+    drawTexturedCube();
+    glDisable(GL_TEXTURE_2D);
+    glPopMatrix();
+    
+    glPopMatrix();
+    
 }
 
 
@@ -1339,7 +1495,7 @@ void animate(int value)
 {
     if (anim == 0) {
         // comment to disable rc at first
-        anim = 1;
+//        anim = 1;
     } else {
         // Set up the next timer tick (do this first)
         if (travel < 13*50) {
@@ -1355,7 +1511,7 @@ void animate(int value)
             travel += 1;
         } else {
             travel = 0;
-            cout << "here" << endl;
+//            cout << "here" << endl;
             anim = 0;
         }
         
@@ -1366,6 +1522,119 @@ void animate(int value)
     }
 }
 
+void billboardCheatSphericalBegin()
+{
+    float modelview[16];
+    int i,j;
+    
+    // save the current modelview matrix
+    glPushMatrix();
+    
+    // get the current modelview matrix
+    glGetFloatv(GL_MODELVIEW_MATRIX , modelview);
+    
+    // undo all rotations
+    // beware all scaling is lost as well
+    for( i=0; i<3; i++ )
+        for( j=0; j<3; j++ ) {
+            if ( i==j )
+                modelview[i*4+j] = 1.0;
+            else
+                modelview[i*4+j] = 0.0;
+        }
+    
+    // set the modelview with no rotations
+    glLoadMatrixf(modelview);
+}
+
+void billboardEnd()
+{
+    // restore the previously
+    // stored modelview matrix
+    glPopMatrix();
+}
+
+void draw_billboard()
+{
+    // -------------------------- billboard --------------------------
+    GLfloat red[] = {1,0.4,0.2,0};              // red
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, red);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, red);
+    glMateriali(GL_FRONT_AND_BACK,GL_SHININESS,40);
+
+    billboardCheatSphericalBegin();
+    glNormal3f(1,0,0);
+    glBegin(GL_TRIANGLES);
+    glVertex3f(-7,6,-8);
+    glVertex3f(-3,6,-8);
+    glVertex3f(-5,9,-8);
+    glEnd();
+    billboardEnd();
+}
+
+void draw_clipping_plane()
+{
+    // -------------------------- clipping plane --------------------------
+    float size=12;
+    
+    // draw small red floor
+    glPushMatrix();
+    
+    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+    glDisable(GL_DEPTH_TEST);
+    
+    glEnable(GL_STENCIL_TEST);
+    glStencilFunc(GL_EQUAL, 0, 3);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
+    
+    glColor3f(1,0,0);
+    glBegin(GL_QUADS);
+    glVertex3f (-size/4, size/2, -size/2);
+    glVertex3f (-size/4, 0, -size/2);
+    glVertex3f (size/4, 0, -size/2);
+    glVertex3f (size/4, size/2, -size/2);
+    glEnd();
+    
+    glEnable(GL_DEPTH_TEST);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    
+    // draw big blue floor
+    glStencilFunc(GL_EQUAL, 0, 3);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+    
+    glColor3f(0,0,1);
+    glBegin(GL_QUADS);
+    glVertex3f (-size/2, size, -size);
+    glVertex3f (-size/2, 0, -size);
+    glVertex3f (size/2, 0, -size);
+    glVertex3f (size/2, size, -size);
+    glEnd();
+    
+    // glEnable(GL_DEPTH_TEST);
+    
+    glDisable(GL_STENCIL_TEST);
+    
+    glPopMatrix();
+}
+
+void drawFog() {
+    // -------------------------- fog --------------------------
+    if (fog == 1) {
+        glEnable(GL_FOG);
+        glClearColor(0.5f,0.5f,0.5f,1.0f);
+    } else {
+        glDisable(GL_FOG);
+    }
+    GLfloat fogColor[4]= {0.5f, 0.5f, 0.5f, 1.0f};
+    
+    glFogi(GL_FOG_MODE, GL_LINEAR);
+    glFogfv(GL_FOG_COLOR, fogColor);
+    glFogf(GL_FOG_DENSITY, 0.25f);
+    glHint(GL_FOG_HINT, GL_DONT_CARE);
+    glFogf(GL_FOG_START, 1.0f);
+    glFogf(GL_FOG_END, 100.0f);
+    
+}
 
 
 // ----------------------------------------------------------------------------------------------
@@ -1465,7 +1734,7 @@ void display()
                           0,1,0);
             }
         } else {
-            cout << "there" << endl;
+//            cout << "there" << endl;
             gluLookAt(rcl[travel][0],rcl[travel][1]+0.1,rcl[travel][2],
                       rcl[travel+1][0],rcl[travel+1][1]+0.1,rcl[travel+1][2],
                       0,1,0);
@@ -1541,6 +1810,7 @@ void display()
     // draw objects
     render_obj();
     draw_mirror();
+    draw_billboard();
     
     // draw "reflected objects"
     glEnable(GL_STENCIL_TEST);
@@ -1564,6 +1834,13 @@ void display()
     drawFloor();
     
     glDisable(GL_BLEND);
+    
+    if (fog == 1) {
+        drawFog();
+    } else {
+        glDisable(GL_FOG);
+        glClearColor(0.0f,0.0f,0.0f,1.0f);
+    }
 
     // swap buffers
     glutSwapBuffers();
