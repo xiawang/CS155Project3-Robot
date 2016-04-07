@@ -30,6 +30,8 @@ void motion(int x, int y);
 void menu_func(int value);
 void keyboard(unsigned char key, int x, int y);
 void keyboardup(unsigned char key, int x, int y);
+void idle();
+
 void pick();
 void render_obj();
 void drawTexturedCube();
@@ -49,6 +51,11 @@ void billboardCheatSphericalBegin();
 void billboardEnd();
 void draw_clipping_plane();
 void drawFog();
+
+void draw_fan();
+void shadowMatrixPointLight(GLfloat shadowMat[16],
+                            GLfloat groundplane[4],
+                            GLfloat lightpos[4]);
 
 // daring the robot
 float ver[8][3] =
@@ -189,6 +196,15 @@ int started = 0;
 // fog
 double fog = 0;
 
+// rotate fan
+double fanrot = 0;
+double fanmode = 0;
+double flymode = 0;
+double fly = 0;
+
+// light for shadow
+float pointLightPosition[]={-3.0f,9.0f,1.0f,1.0f};
+
 
 // -------------------------------------------------------------------
 //                                  menu
@@ -230,7 +246,7 @@ int main(int argc, char **argv)
     glutInitWindowSize(windowWidth,windowHeight);
     
     // establish glut display parameters
-    glutInitDisplayMode(GLUT_DOUBLE   | GLUT_RGB  |GLUT_DEPTH);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB  | GLUT_DEPTH | GLUT_STENCIL);
     
     // create window
     main_window = glutCreateWindow("~Robot Land~");
@@ -242,6 +258,7 @@ int main(int argc, char **argv)
     glutMotionFunc(motion);
     glutKeyboardFunc(keyboard);
     glutKeyboardUpFunc(keyboardup);
+    glutIdleFunc(idle);
     
     // initalize opengl parameters
     init();
@@ -301,7 +318,8 @@ void initLighting()
     GLfloat ambientColor[] = {0.4, 0.4, 0.4, 1};
     glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambientColor);
     
-    
+    // for shadow
+    glLightfv(GL_LIGHT2, GL_POSITION, pointLightPosition);
 }
 
 
@@ -490,13 +508,19 @@ void keyboard(unsigned char key, int x, int y) {
             glutPostRedisplay();
             break;
         case 'F':
-            pick();
             if (fog == 0) {
                 fog  = 1;
             } else {
                 fog = 0;
             }
-            cout << fog << endl;
+            glutPostRedisplay();
+            break;
+        case 'v':
+            if (fanmode == 0) {
+                fanmode  = 1;
+            } else {
+                fanmode = 0;
+            }
             glutPostRedisplay();
             break;
         // see control options
@@ -523,6 +547,7 @@ void keyboard(unsigned char key, int x, int y) {
             cout << "move head     -------   'h' (and move the mouse)" << endl;
             cout << "first person  -------   'f'" << endl;
             cout << "pick/leave    -------   'p'" << endl;
+            cout << "fan           -------   'v'" << endl;
             cout << "" << endl;
             cout << "" << endl;
             break;
@@ -639,6 +664,7 @@ void menu_func(int value)
             cout << "move head     -------   'h' (press and move the mouse)" << endl;
             cout << "first person  -------   'f'" << endl;
             cout << "pick/leave    -------   'p'" << endl;
+            cout << "fan           -------   'v'" << endl;
             cout << "" << endl;
             cout << "" << endl;
         }
@@ -824,7 +850,7 @@ void colorcube(GLfloat q_color[4])
 
 void drawRobot(GLfloat q_color[4], double head_move, double armr, double legr, double arm_angl_u1, double arm_angl_u2, double arm_angl_d, double leg_angl){
     glPushMatrix();
-    glTranslatef(0.0-robot_a+robot_d, 0.91, 0.0-robot_w+robot_s);
+    glTranslatef(0.0-robot_a+robot_d, 0.91+fly, 0.0-robot_w+robot_s);
     
     
     glPushMatrix();
@@ -1170,6 +1196,41 @@ void drawFloor(){
 }
 
 
+void shadowMatrixPointLight(GLfloat shadowMat[16],
+                       GLfloat groundplane[4],
+                       GLfloat lightpos[4])
+{
+    GLfloat dot;
+    
+    
+    /* Find dot product between light position vector and ground plane normal. */
+    dot = groundplane[0] * lightpos[0] +
+    groundplane[1] * lightpos[1] +
+    groundplane[2] * lightpos[2] +
+    groundplane[3] * lightpos[3];
+    
+    shadowMat[0] = dot - lightpos[0] * groundplane[0];
+    shadowMat[4] = 0.f - lightpos[0] * groundplane[1];
+    shadowMat[8] = 0.f - lightpos[0] * groundplane[2];
+    shadowMat[12] = 0.f - lightpos[0] * groundplane[3];
+    
+    shadowMat[1] = 0.f - lightpos[1] * groundplane[0];
+    shadowMat[5] = dot - lightpos[1] * groundplane[1];
+    shadowMat[9] = 0.f - lightpos[1] * groundplane[2];
+    shadowMat[13] = 0.f - lightpos[1] * groundplane[3];
+    
+    shadowMat[2] = 0.f - lightpos[2] * groundplane[0];
+    shadowMat[6] = 0.f - lightpos[2] * groundplane[1];
+    shadowMat[10] = dot - lightpos[2] * groundplane[2];
+    shadowMat[14] = 0.f - lightpos[2] * groundplane[3];
+    
+    shadowMat[3] = 0.f - lightpos[3] * groundplane[0];
+    shadowMat[7] = 0.f - lightpos[3] * groundplane[1];
+    shadowMat[11] = 0.f - lightpos[3] * groundplane[2];
+    shadowMat[15] = dot - lightpos[3] * groundplane[3];
+}
+
+
 void render_obj()
 {
     // -------------------------- triangles --------------------------
@@ -1242,9 +1303,9 @@ void render_obj()
     if (pickable[0][3] == 1) { // if picking the object
         // move the object with the left hand
         if (fmod(-robot_w+robot_s, 2) == 0) {
-            glTranslatef(-robot_a+robot_d-1, 2, -robot_w+robot_s-2);
+            glTranslatef(-robot_a+robot_d-1, 2+fly, -robot_w+robot_s-2);
         } else {
-            glTranslatef(-robot_a+robot_d-1, 1.3, -robot_w+robot_s+0.7);
+            glTranslatef(-robot_a+robot_d-1, 1.3+fly, -robot_w+robot_s+0.7);
         }
         
     } else { // if not picking the object
@@ -1348,6 +1409,37 @@ void render_obj()
     
     
     // -------------------------- textured --------------------------
+    glColor4f(0,0,0,.4);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_POLYGON_OFFSET_FILL);
+    glPolygonOffset(-1,0.5);
+    
+    GLfloat shadowMat[16];
+    GLfloat groundplane[4]={0,1,0,0};
+    shadowMatrixPointLight(shadowMat, groundplane, pointLightPosition);
+    glPushMatrix();
+    glTranslatef(0.0, -1.0, 0.0);
+    glMultMatrixf(shadowMat);
+//    GLfloat black[4]={0,0,0,0.3};
+//    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, black);
+//    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, black);
+    
+    glPushMatrix();
+    drawTexturedCube();
+    glPopMatrix();
+    
+    glPushMatrix();
+    glScalef(0.7, 0.7, 0.7);
+    glTranslatef(2.0, 0.3, -4.0);
+    drawTexturedCube();
+    glPopMatrix();
+    
+    glPopMatrix();
+    
+    glDisable(GL_POLYGON_OFFSET_FILL);
+    glDisable(GL_BLEND);
+    
     glPushMatrix();
     glTranslatef(+4, -2, 0);
     
@@ -1360,10 +1452,17 @@ void render_obj()
     glPushMatrix();
     glEnable(GL_TEXTURE_2D);
     glScalef(0.7, 0.7, 0.7);
-    glTranslatef(-2.0, 0.3, -4.0);
+    glTranslatef(2.0, 0.3, -4.0);
     drawTexturedCube();
     glDisable(GL_TEXTURE_2D);
     glPopMatrix();
+    
+    
+    // -------------------------- fun --------------------------
+    if (fanmode == 1) {
+        draw_fan();
+    }
+    
     
     glPopMatrix();
     
@@ -1373,19 +1472,44 @@ void render_obj()
 void draw_mirror()
 {
     // -------------------------- mirror --------------------------
-    GLfloat gold[] = {0.9,0.9,0,0};
-    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, gold);
-    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, gold);
-    glMateriali(GL_FRONT_AND_BACK,GL_SHININESS,60);
+    glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     
-    glPushMatrix();
+    // begin reflection
+    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_STENCIL_TEST);
+    
+    // tag the mirror
+    glStencilFunc(GL_EQUAL, 0, 3);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
+    
+    //glEnable(GL_CULL_FACE);
+    //glCullFace(GL_FRONT);
+    
+    
     glBegin(GL_QUADS);
     glVertex3f(-5, -1, -16);
     glVertex3f(-1, -1, -16);
     glVertex3f(-1, 7, -16);
     glVertex3f(-5, 7, -16);
     glEnd();
+    
+    
+    //glDisable(GL_CULL_FACE);
+    glEnable(GL_DEPTH_TEST);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    
+    glStencilFunc(GL_NOTEQUAL, 0, 3);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+    
+    glPushMatrix();
+    glScalef(1,1,-1);
+    glTranslatef(0, 0, 32);
+    render_obj();
     glPopMatrix();
+    
+    glDisable(GL_STENCIL_TEST);
+    glEnable(GL_DEPTH_TEST);
 }
 
 
@@ -1429,6 +1553,9 @@ void draw_2D_headup(double a, double b, double c, double d)
 void draw_text(std::string text, int x, int y, void * font)
 {
     // display text
+    glDisable(GL_STENCIL_TEST);
+    glDisable(GL_DEPTH_TEST);
+    
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
     glLoadIdentity();
@@ -1458,7 +1585,47 @@ void draw_text(std::string text, int x, int y, void * font)
     
     glMatrixMode(GL_PROJECTION);
     glPopMatrix();
+    
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_STENCIL_TEST);
 }
+
+void printtext(string String, int x, int y, void * font)
+{
+    //(x,y) is from the bottom left of the window
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    glOrtho(0, windowWidth, 0, windowHeight, -1.0f, 1.0f);
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+    glPushAttrib(GL_DEPTH_TEST);
+    glDisable(GL_DEPTH_TEST);
+    glRasterPos2i(x,y);
+    for (int i=0; i<String.size(); i++)
+    {
+        glutBitmapCharacter(font, String[i]);
+    }
+    glPopAttrib();
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    glMatrixMode(GL_MODELVIEW);
+    glPopMatrix();
+}
+
+void drawStrokeText(string string,int x,int y,int z)
+{
+    glPushMatrix();
+    glTranslatef(x, y, z);
+    
+    for (int i=0; i<string.size(); i++)
+    {
+        glutStrokeCharacter(GLUT_STROKE_ROMAN, string[i]);
+    }
+    glPopMatrix();
+}
+
 
 void draw_intro_text()
 {
@@ -1575,9 +1742,10 @@ void draw_billboard()
 void draw_clipping_plane()
 {
     // -------------------------- clipping plane --------------------------
+    glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     float size=12;
     
-    // draw small red floor
+    // draw small
     glPushMatrix();
     
     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
@@ -1589,35 +1757,36 @@ void draw_clipping_plane()
     
     glColor3f(1,0,0);
     glBegin(GL_QUADS);
-    glVertex3f (-size/4, size/2, -size/2);
-    glVertex3f (-size/4, 0, -size/2);
-    glVertex3f (size/4, 0, -size/2);
-    glVertex3f (size/4, size/2, -size/2);
+    glVertex3f (-4, 9, -3);
+    glVertex3f (-4, -1, -3);
+    glVertex3f (-0, -1, -3);
+    glVertex3f (-0, 9, -3);
     glEnd();
     
     glEnable(GL_DEPTH_TEST);
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     
-    // draw big blue floor
+    // draw big
     glStencilFunc(GL_EQUAL, 0, 3);
     glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
     
     glColor3f(0,0,1);
     glBegin(GL_QUADS);
-    glVertex3f (-size/2, size, -size);
-    glVertex3f (-size/2, 0, -size);
-    glVertex3f (size/2, 0, -size);
-    glVertex3f (size/2, size, -size);
+    glVertex3f (-6, 10, -3);
+    glVertex3f (-6, -1, -3);
+    glVertex3f (2, -1, -3);
+    glVertex3f (2, 10, -3);
     glEnd();
     
-    // glEnable(GL_DEPTH_TEST);
+//    glEnable(GL_DEPTH_TEST);
     
     glDisable(GL_STENCIL_TEST);
     
     glPopMatrix();
 }
 
-void drawFog() {
+void drawFog()
+{
     // -------------------------- fog --------------------------
     if (fog == 1) {
         glEnable(GL_FOG);
@@ -1633,6 +1802,88 @@ void drawFog() {
     glHint(GL_FOG_HINT, GL_DONT_CARE);
     glFogf(GL_FOG_START, 1.0f);
     glFogf(GL_FOG_END, 100.0f);
+    
+}
+
+void draw_fan()
+{
+    // -------------------------- fan --------------------------
+    double temp_move1 = -robot_w+robot_s;
+    double temp_move2 = -robot_a+robot_d;
+    
+    glPushMatrix();
+    glTranslatef(0.0-robot_a+robot_d, fly, 0.0-robot_w+robot_s);
+    
+    glPushMatrix();
+    glTranslatef(-4, 0, 0);
+    glRotatef(fanrot, 0, 1, 0);
+    glTranslatef(4, 0, 0);
+    
+    // part 1
+    glBegin(GL_TRIANGLES);
+    glVertex3f(-6, 8.7, 0);
+    glVertex3f(-3.75, 8.7, 0);
+    glVertex3f(-5.75, 8.7, -0.5);
+    glEnd();
+    
+    glBegin(GL_TRIANGLES);
+    glVertex3f(-2, 8.7, 0);
+    glVertex3f(-4.25, 8.7, 0);
+    glVertex3f(-2.25, 8.7, 0.5);
+    glEnd();
+    glPopMatrix();
+    
+    // part 2
+    glBegin(GL_TRIANGLES);
+    glVertex3f(-4, 8.7, 0.0);
+    glVertex3f(-4.15, 7.0, 0.1);
+    glVertex3f(-3.85, 7.0, 0.1);
+    glEnd();
+    
+    glBegin(GL_TRIANGLES);
+    glVertex3f(-4, 8.7, 0.0);
+    glVertex3f(-4, 7.0, -0.1);
+    glVertex3f(-4.15, 7.0, 0.1);
+    glEnd();
+    
+    glBegin(GL_TRIANGLES);
+    glVertex3f(-4, 8.7, 0.0);
+    glVertex3f(-3.85, 7.0, 0.1);
+    glVertex3f(-4, 7.0, -0.1);
+    glEnd();
+    
+    glPopMatrix();
+    
+}
+
+double initfly = 0;
+void idle()
+{
+    // update rotation
+    fanrot += 40;
+    if (fanmode == 1) {
+        initfly = 1;
+        if (flymode == 0) {
+            flymode = 1;
+        } else {
+            if (fly <= 2.4) {
+                fly += 0.1;
+                cout << fly << endl;
+            }
+        }
+    } else {
+        if (initfly == 1) {
+            if (flymode == 1) {
+                flymode = 0;
+            } else {
+                if (fly >= 0.1) {
+                    fly -= 0.1;
+                    cout << fly << endl;
+                }
+            }
+        }
+    }
+    glutPostRedisplay();
     
 }
 
@@ -1781,10 +2032,23 @@ void display()
     //                               objects
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     
+    // -------------------------- portal --------------------------
+    // part 1
+//    glPushMatrix();
+//    draw_clipping_plane();
+//    glPopMatrix();
+//    glClear(GL_STENCIL_BUFFER_BIT);
+    
+    // part 2
+//    glPushMatrix();
+//    glRotatef(90, 0, 1, 0);
+//    draw_clipping_plane();
+//    glPopMatrix();
+//    glClear(GL_STENCIL_BUFFER_BIT);
+//    
     // begin reflection
     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
     glDisable(GL_DEPTH_TEST);
-    
     glEnable(GL_STENCIL_TEST);
     
     // tag the floor
@@ -1792,7 +2056,7 @@ void display()
     glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
     
     glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
+    glCullFace(GL_FRONT);
     
     glBegin(GL_QUADS);
     glVertex3f(-500,-1,500);
@@ -1809,20 +2073,37 @@ void display()
     
     // draw objects
     render_obj();
-    draw_mirror();
+    GLfloat gold[] = {0.9,0.9,0,0};
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, gold);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, gold);
+    glMateriali(GL_FRONT_AND_BACK,GL_SHININESS,60);
+    
+    glBegin(GL_QUADS);
+    glVertex3f(-5, -1, -16);
+    glVertex3f(-1, -1, -16);
+    glVertex3f(-1, 7, -16);
+    glVertex3f(-5, 7, -16);
+    glEnd();
     draw_billboard();
     
     // draw "reflected objects"
     glEnable(GL_STENCIL_TEST);
     
-    glStencilFunc(GL_EQUAL, 1, 3);
+    glStencilFunc(GL_NOTEQUAL, 0, 3);
     glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
     
     glPushMatrix();
     glScalef(1,-1,1);
     glTranslatef(0, +2, 0);
     render_obj();
-    draw_mirror();
+    
+    glBegin(GL_QUADS);
+    glVertex3f(-5, -1, -16);
+    glVertex3f(-1, -1, -16);
+    glVertex3f(-1, 7, -16);
+    glVertex3f(-5, 7, -16);
+    glEnd();
+    
     glPopMatrix();
     
     glDisable(GL_STENCIL_TEST);
@@ -1835,6 +2116,9 @@ void display()
     
     glDisable(GL_BLEND);
     
+    draw_mirror();
+    
+    // fog
     if (fog == 1) {
         drawFog();
     } else {
